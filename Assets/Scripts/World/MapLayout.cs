@@ -36,7 +36,7 @@ namespace RealPeace
     }
 
     /// <summary>
-    /// Вся геометрия карты «Каменка, лето 1943» чистыми функциями и списками: рельеф, река, дороги, мосты,
+    /// Вся геометрия карты «Битва за Токмачку, осень 1943» чистыми функциями и списками: рельеф, река, дороги, мосты,
     /// постройки, леса, изгороди, точки контроля и базы. По этим данным строятся графика (MapBuilder),
     /// навигация (NavBuilder) и укрытия (CoverMap) — так они никогда не расходятся.
     /// СССР — юг (−Z), Германия — север (+Z).
@@ -75,7 +75,7 @@ namespace RealPeace
         public const float BridgeHalfLength = RiverBankHalf + 2f;
 
         // ---------- Точки контроля и базы ----------
-        public static readonly string[] PointNames = { "Мельница", "Деревня", "Высота 112" };
+        public static readonly string[] PointNames = { "Мельница", "Токмачка", "Высота 112" };
         public static readonly Vector2[] PointXZ = { new Vector2(-122f, 2f), new Vector2(14f, 4f), new Vector2(118f, 0f) };
 
         public static Vector3 Point(int i) => Ground(PointXZ[i].x, PointXZ[i].y);

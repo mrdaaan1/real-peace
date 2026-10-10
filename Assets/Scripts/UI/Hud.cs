@@ -486,13 +486,13 @@ namespace RealPeace
             Fill(new Rect(0f, 0f, vw, vh), new Color(0f, 0f, 0f, 0.25f));
             Fill(new Rect(0f, 0f, 760f, vh), new Color(0.05f, 0.05f, 0.045f, 0.78f));
             GUI.Label(new Rect(60f, 70f, 680f, 70f), "<b>REAL PEACE</b>", new GUIStyle(label) { fontSize = 60, wordWrap = false });
-            GUI.Label(new Rect(64f, 148f, 680f, 30f), "Восточный фронт · лето 1943 · деревня Каменка", new GUIStyle(label) { fontSize = 22, normal = { textColor = Shapes.Hex("#c8b88a") } });
+            GUI.Label(new Rect(64f, 148f, 680f, 30f), "Битва за Токмачку · осень 1943 · Запорожье", new GUIStyle(label) { fontSize = 22, normal = { textColor = Shapes.Hex("#c8b88a") } });
 
             GUI.Label(new Rect(64f, 220f, 600f, 30f), "Выберите сторону", title);
             SideCard(new Rect(64f, 262f, 300f, 250f), Faction.USSR,
-                "Красная армия держит рубеж у Каменки. Стрелковые отделения по 6 бойцов, «Максим», ПТРД и быстрый Т-34-76.");
+                "Красная армия наступает на Токмачку и рвёт «Линию Вотан». Отделения по 6 бойцов, «Максим», ПТРД и быстрый Т-34-76.");
             SideCard(new Rect(384f, 262f, 300f, 250f), Faction.Germany,
-                "Вермахт наступает с севера. Отделения по 5 солдат, скорострельный MG 42, «Панцершрек» и Pz.IV с длинной пушкой.");
+                "Вермахт удерживает Токмачку на «Линии Вотан». Отделения по 5 солдат, скорострельный MG 42, «Панцершрек» и Pz.IV.");
 
             var s = GameSettings.I;
             GUI.Label(new Rect(64f, 540f, 600f, 30f), "Сложность", title);

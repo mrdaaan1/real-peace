@@ -75,7 +75,7 @@ namespace RealPeace
                 b.Spawn(f, UnitKind.MachineGun, basePos + new Vector3(-8f, 0f, front * 12f));
                 b.Spawn(f, UnitKind.AntiTank, basePos + new Vector3(8f, 0f, front * 12f));
             }
-            b.Message("Бой начался. Захватите точки контроля!", null);
+            b.Message("Битва за Токмачку началась. Захватите точки контроля!", null);
             return b;
         }
 

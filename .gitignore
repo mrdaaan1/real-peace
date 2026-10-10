@@ -1,0 +1,42 @@
+# Unity: генерируемое и локальное
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+.vscode/
+.idea/
+.consulo/
+crashlytics-buildid.txt
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Выход инструментов (скриншоты автотеста, превью Blender, сохранения .blend)
+/Tools/out/
+/Tools/Blender/out/
+/Tools/Blender/__pycache__/
+*.blend1
+
+# macOS
+.DS_Store

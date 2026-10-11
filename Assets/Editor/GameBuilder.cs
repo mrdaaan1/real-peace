@@ -39,6 +39,7 @@ public static class GameBuilder
         PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, "com.realpeace.game");
         PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
         PlayerSettings.resizableWindow = true;
+        PlayerSettings.runInBackground = true; // бой не замирает, если переключиться в другое окно
         if (target == BuildTarget.StandaloneOSX)
             UnityEditor.OSXStandalone.UserBuildSettings.architecture = UnityEditor.Build.OSArchitecture.x64ARM64;
 

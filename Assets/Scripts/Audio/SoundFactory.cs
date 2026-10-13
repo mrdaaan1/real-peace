@@ -10,7 +10,7 @@ namespace RealPeace
     {
         const int Rate = 44100;
 
-        static AudioClip rifle, smg, mg, cannon, explosion, grenade, ricochet, engine, click, capture, atRifle;
+        static AudioClip rifle, smg, mg, cannon, explosion, grenade, ricochet, engine, click, capture, atRifle, mortar, flame;
 
         static AudioClip Create(string name, float[] data)
         {
@@ -42,6 +42,33 @@ namespace RealPeace
         public static AudioClip Rifle => rifle != null ? rifle : (rifle = Shot("Rifle", 11, 0.7f, 70f, 140f, 18f, 1.6f));
         public static AudioClip Smg => smg != null ? smg : (smg = Shot("Smg", 12, 0.25f, 110f, 180f, 30f, 0.8f));
         public static AudioClip MachineGun => mg != null ? mg : (mg = Shot("MG", 13, 0.3f, 90f, 160f, 26f, 1.1f));
+        public static AudioClip MortarShot => mortar != null ? mortar : (mortar = Shot("Mortar", 15, 1.1f, 30f, 55f, 7f, 2.6f));
+
+        /// <summary>Огнемёт: рёв пламени — низкий шум с потрескиванием.</summary>
+        public static AudioClip Flame
+        {
+            get
+            {
+                if (flame != null) return flame;
+                int n = (int)(Rate * 0.9f);
+                var data = new float[n];
+                var rnd = new System.Random(61);
+                float lp = 0f, lp2 = 0f;
+                for (int i = 0; i < n; i++)
+                {
+                    float t = (float)i / Rate;
+                    float noise = (float)rnd.NextDouble() * 2f - 1f;
+                    lp = Mathf.Lerp(lp, noise, 0.06f);
+                    lp2 = Mathf.Lerp(lp2, noise, 0.3f);
+                    float env = Mathf.Clamp01(t / 0.05f) * Mathf.Clamp01((0.9f - t) / 0.25f);
+                    float crackle = rnd.NextDouble() < 0.01 ? noise : 0f;
+                    data[i] = Mathf.Clamp((lp * 3.5f + lp2 * 0.25f + crackle * 0.6f) * env, -1f, 1f);
+                }
+                flame = Create("Flame", data);
+                return flame;
+            }
+        }
+
         public static AudioClip AtRifle => atRifle != null ? atRifle : (atRifle = Shot("AtRifle", 14, 0.9f, 45f, 90f, 10f, 2.2f));
 
         /// <summary>Пушка: глубокий удар с долгим раскатом.</summary>

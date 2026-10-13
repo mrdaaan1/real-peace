@@ -29,6 +29,7 @@ namespace RealPeace
             BuildGround(map);
             BuildWater(map);
             BuildBridges(decor, solids);
+            BuildRailways(decor);
             foreach (var b in MapLayout.Buildings) BuildBuilding(b, decor, solids);
             foreach (var b in MapLayout.Barriers) BuildBarrier(b, decor);
             BuildTrees(decor, solids);
@@ -49,7 +50,7 @@ namespace RealPeace
             if (MapLayout.InWater(x, z)) return MapSurface.Water;
             float river = MapLayout.RiverDistance(x, z);
             if (river < MapLayout.RiverBankHalf + 1.5f) return MapSurface.Mud;
-            if (MapLayout.RoadDistance(x, z) < 3.2f) return MapSurface.Road;
+            if (MapLayout.RoadDistance(x, z) < 3.2f || MapLayout.RailDistance(x, z) < 3.5f) return MapSurface.Road;
             foreach (Faction f in new[] { Faction.USSR, Faction.Germany })
                 if (Vector2.Distance(new Vector2(x, z), new Vector2(MapLayout.Base(f).x, MapLayout.Base(f).z)) < 20f) return MapSurface.Road;
             foreach (var p in MapLayout.PointXZ)
@@ -111,6 +112,7 @@ namespace RealPeace
             Layer("_PloughTex", TextureFactory.GroundPlough, 7f);
             mat.SetFloat("_Tiling", 0.22f);
             mat.SetFloat("_NormalStrength", 1.1f);
+            mat.SetColor("_GrassTint", MapLayout.Map.GrassTint);
 
             var go = Shapes.MeshObject("Ground", map, mesh, mat);
             go.GetComponent<MeshRenderer>().receiveShadows = true;
@@ -164,7 +166,7 @@ namespace RealPeace
                     foreach (var p in MapLayout.PointXZ)
                         r = Mathf.Max(r, MapLayout.Smooth01((7f - Vector2.Distance(p, new Vector2(x, z))) / 3f) * 0.7f);
                     // Дороги
-                    float rd = MapLayout.RoadDistance(x, z);
+                    float rd = Mathf.Min(MapLayout.RoadDistance(x, z), MapLayout.RailDistance(x, z));
                     float roadK = MapLayout.Smooth01((3.4f - rd) / 1.4f);
                     r = Mathf.Max(r, roadK);
                     mc = Color.Lerp(mc, road, Mathf.Max(roadK, r * 0.6f));
@@ -284,6 +286,12 @@ namespace RealPeace
                     root.Find("Sails").SetParent(solids, true); // крылья крутятся — их не склеиваем
                     break;
                 case BuildingKind.Pillbox: Pillbox(root, s); blockerHeight = 1.6f; break;
+                case BuildingKind.BrickHouse: BrickHouse(root, s, false, b.center); break;
+                case BuildingKind.BrickRuin: BrickHouse(root, s, true, b.center); blockerHeight = 2.5f; break;
+                case BuildingKind.Station: Station(root, s); break;
+                case BuildingKind.Warehouse: Warehouse(root, s); break;
+                case BuildingKind.Elevator: Elevator(root, s); blockerHeight = s.y + 4f; break;
+                case BuildingKind.Chapel: Chapel(root, s); blockerHeight = 9f; break;
             }
 
             // Коллайдер для линии видимости и кликов (без сетки)
@@ -530,7 +538,7 @@ namespace RealPeace
             if (len < 0.1f) return;
             float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
             int pieces = Mathf.Max(1, Mathf.CeilToInt(len / 3f));
-            var hedgeMat = Mats.Foliage("HedgeLeaves", TextureFactory.LeafCluster("LeafHedge", Shapes.Hex("#3e5a28"), 0.022f, 701), new Color(1.2f, 1.18f, 1.0f), 0.08f, 0.7f);
+            var hedgeMat = Mats.Foliage("HedgeLeaves_" + MapLayout.Current, TextureFactory.LeafCluster("LeafHedge_" + MapLayout.Current, MapLayout.Map.HedgeLeaves, 0.022f, 701), new Color(1.2f, 1.18f, 1.0f), 0.08f, 0.7f);
             for (int i = 0; i < pieces; i++)
             {
                 float t0 = (float)i / pieces, t1 = (i + 1f) / pieces;
@@ -580,8 +588,8 @@ namespace RealPeace
             var rnd = new System.Random(7);
             var bark = Shapes.Hex("#4b3d30");
             var birchBark = Shapes.Hex("#d6d2c6");
-            var oakMat = Mats.Foliage("OakLeaves", TextureFactory.LeafCluster("LeafOak", Shapes.Hex("#405c26"), 0.032f, 711), new Color(1.25f, 1.22f, 1.0f), 0.35f, 1.0f);
-            var birchMat = Mats.Foliage("BirchLeaves", TextureFactory.LeafCluster("LeafBirch", Shapes.Hex("#5a7a2c"), 0.026f, 713), new Color(1.25f, 1.22f, 1.0f), 0.45f, 1.2f);
+            var oakMat = Mats.Foliage("OakLeaves_" + MapLayout.Current, TextureFactory.LeafCluster("LeafOak_" + MapLayout.Current, MapLayout.Map.OakLeaves, 0.032f, 711), new Color(1.25f, 1.22f, 1.0f), 0.35f, 1.0f);
+            var birchMat = Mats.Foliage("BirchLeaves_" + MapLayout.Current, TextureFactory.LeafCluster("LeafBirch_" + MapLayout.Current, MapLayout.Map.BirchLeaves, 0.026f, 713), new Color(1.25f, 1.22f, 1.0f), 0.45f, 1.2f);
             var pineMat = Mats.Foliage("PineNeedles", TextureFactory.PineBranch, new Color(1.3f, 1.3f, 1.05f), 0.2f, 0.5f);
             foreach (var t in MapLayout.Trees)
             {
@@ -630,41 +638,296 @@ namespace RealPeace
             }
         }
 
-        // ---------- Мелочи: столбы, стога, воронки ----------
+
+        // ---------- Городские постройки (Мелитополь) ----------
+
+        static readonly Color[] BrickColors = { Shapes.Hex("#9a5a42"), Shapes.Hex("#8c5440"), Shapes.Hex("#a36a4e") };
+        static readonly Color[] Whitewash = { Shapes.Hex("#d8d0bc"), Shapes.Hex("#cfc5a8"), Shapes.Hex("#c9c2b4") };
+
+        /// <summary>Кирпичный дом в 1–2 этажа: кирпич или побелка, вальмовая жестяная крыша, окна с наличниками. Руина — стены без крыши.</summary>
+        static void BrickHouse(Transform root, Vector3 s, bool ruined, Vector3 seed)
+        {
+            int k = Mathf.Abs(Mathf.RoundToInt(seed.x * 3f + seed.z * 7f));
+            bool plastered = k % 3 == 0;
+            var wall = plastered ? Whitewash[k % Whitewash.Length] : BrickColors[k % BrickColors.Length];
+            var wallSurf = plastered ? Surf.Plaster : Surf.Brick;
+            using (Shapes.Brush(Surf.Stone))
+                Shapes.Box(root, new Vector3(0f, -0.2f, 0f), new Vector3(s.x + 0.3f, 0.9f, s.z + 0.3f), Shapes.Hex("#77726a"));
+            bool twoFloors = s.y > 8f;
+            if (ruined)
+            {
+                // Обгоревшие стены неравной высоты, проломы, груда кирпича
+                using (Shapes.Brush(wallSurf))
+                {
+                    var burnt = Shapes.Shade(wall, 0.65f);
+                    float h0 = s.y * 0.75f, h1 = s.y * 0.35f, h2 = s.y * 0.55f;
+                    Shapes.Box(root, new Vector3(0f, h0 / 2f, s.z / 2f - 0.25f), new Vector3(s.x, h0, 0.5f), burnt);
+                    Shapes.Box(root, new Vector3(-s.x / 2f + 0.25f, h2 / 2f, 0f), new Vector3(0.5f, h2, s.z), burnt);
+                    Shapes.Box(root, new Vector3(s.x * 0.25f, h1 / 2f, -s.z / 2f + 0.25f), new Vector3(s.x * 0.5f, h1, 0.5f), burnt);
+                    Shapes.Box(root, new Vector3(s.x / 2f - 0.25f, h1 * 0.6f, s.z * 0.2f), new Vector3(0.5f, h1 * 1.2f, s.z * 0.5f), burnt);
+                }
+                using (Shapes.Brush(Surf.Brick))
+                    for (int i = 0; i < 6; i++)
+                        Shapes.Part(Shapes.LowSphere, root, new Vector3(-s.x * 0.3f + i * s.x * 0.12f, 0.2f, -s.z * 0.1f + (i % 3) * 0.8f),
+                            new Vector3(2.4f, 1.0f + (i % 2) * 0.4f, 2f), Shapes.Hex("#7d4c3a"));
+                using (Shapes.Brush(Surf.Wood))
+                    for (int i = 0; i < 4; i++)
+                        Shapes.Box(root, new Vector3(-1f + i * 0.7f, 0.9f, 0.5f), new Vector3(0.2f, 0.2f, s.z * 0.7f), Shapes.Hex("#2b241e"), new Vector3(20f + i * 8f, 15f * i, 0f));
+                return;
+            }
+            using (Shapes.Brush(wallSurf))
+            {
+                Shapes.Box(root, new Vector3(0f, s.y / 2f, 0f), s, wall, name: "Walls");
+                // Карниз и межэтажный пояс
+                Shapes.Box(root, new Vector3(0f, s.y - 0.15f, 0f), new Vector3(s.x + 0.3f, 0.3f, s.z + 0.3f), Shapes.Shade(wall, 0.9f));
+                if (twoFloors) Shapes.Box(root, new Vector3(0f, s.y * 0.5f, 0f), new Vector3(s.x + 0.12f, 0.2f, s.z + 0.12f), Shapes.Shade(wall, 0.92f));
+            }
+            // Вальмовая крыша из жести
+            float rh = 2.2f;
+            var roofPts = new List<Vector2> { new Vector2(0f, -s.x / 2f - 0.4f), new Vector2(0f, s.x / 2f + 0.4f), new Vector2(rh, 0.6f), new Vector2(rh, -0.6f) };
+            var roof = Shapes.Prism(roofPts, s.z / 2f + 0.4f, Mathf.Max(0.5f, s.z / 2f - s.x * 0.35f));
+            Shapes.MeshObject("Roof", root, roof, Mats.Get(k % 2 == 0 ? Shapes.Hex("#5e6660") : Shapes.Hex("#6a4a3a"), Surf.Metal), new Vector3(0f, s.y, 0f), new Vector3(0f, 90f, 0f));
+            // Окна: по фасадам, на одном или двух этажах
+            int floors = twoFloors ? 2 : 1;
+            for (int f = 0; f < floors; f++)
+            {
+                float y = (f + 0.55f) * s.y / floors;
+                for (float x = -s.x / 2f + 1.6f; x < s.x / 2f - 1f; x += 2.4f)
+                {
+                    TallWindow(root, new Vector3(x, y, s.z / 2f + 0.05f), 0f, wall);
+                    TallWindow(root, new Vector3(x, y, -s.z / 2f - 0.05f), 180f, wall);
+                }
+                for (float z = -s.z / 2f + 1.6f; z < s.z / 2f - 1f; z += 2.6f)
+                {
+                    TallWindow(root, new Vector3(s.x / 2f + 0.05f, y, z), 90f, wall);
+                    TallWindow(root, new Vector3(-s.x / 2f - 0.05f, y, z), -90f, wall);
+                }
+            }
+            // Следы боёв: выбоины от пуль и снарядов
+            for (int i = 0; i < 3; i++)
+                Shapes.Box(root, new Vector3(-s.x * 0.3f + i * s.x * 0.3f, s.y * (0.3f + 0.2f * (i % 2)), s.z / 2f + 0.06f), new Vector3(0.6f + i * 0.2f, 0.5f, 0.04f), Shapes.Hex("#4a3a32"));
+        }
+
+        static void TallWindow(Transform root, Vector3 pos, float yaw, Color wall)
+        {
+            var w = Shapes.Group("Window", root, pos, new Vector3(0f, yaw, 0f));
+            using (Shapes.Brush(Surf.Plaster))
+                Shapes.Box(w, new Vector3(0f, 0f, 0f), new Vector3(1.15f, 1.75f, 0.06f), Shapes.Hex("#d6cfc0"));
+            Shapes.Box(w, new Vector3(0f, 0f, 0.02f), new Vector3(0.9f, 1.5f, 0.05f), GlassC, name: "Glass").GetComponent<MeshRenderer>().sharedMaterial = GlassMat;
+            using (Shapes.Brush(Surf.Wood))
+            {
+                Shapes.Box(w, new Vector3(0f, 0f, 0.05f), new Vector3(0.06f, 1.5f, 0.03f), Shapes.Hex("#e0dccf"));
+                Shapes.Box(w, new Vector3(0f, 0.3f, 0.05f), new Vector3(0.9f, 0.06f, 0.03f), Shapes.Hex("#e0dccf"));
+            }
+            using (Shapes.Brush(Surf.Stone))
+                Shapes.Box(w, new Vector3(0f, -0.92f, 0.08f), new Vector3(1.25f, 0.1f, 0.18f), Shapes.Shade(wall, 0.85f));
+        }
+
+        /// <summary>Вокзал: двухэтажное здание с башенкой и часами, навес над перроном вдоль путей.</summary>
+        static void Station(Transform root, Vector3 s)
+        {
+            var wall = Shapes.Hex("#d3c8a8");
+            using (Shapes.Brush(Surf.Stone))
+                Shapes.Box(root, new Vector3(0f, -0.2f, 0f), new Vector3(s.x + 0.6f, 0.9f, s.z + 0.6f), Shapes.Hex("#7a756c"));
+            using (Shapes.Brush(Surf.Plaster))
+            {
+                Shapes.Box(root, new Vector3(0f, s.y / 2f, 0f), s, wall, name: "Walls");
+                Shapes.Box(root, new Vector3(0f, s.y - 0.15f, 0f), new Vector3(s.x + 0.4f, 0.3f, s.z + 0.4f), Shapes.Shade(wall, 0.9f));
+                // Центральная башенка
+                Shapes.Box(root, new Vector3(0f, s.y + 2.5f, 0f), new Vector3(6f, 5f, 6f), wall);
+                Shapes.Box(root, new Vector3(0f, s.y + 5.1f, 0f), new Vector3(6.4f, 0.3f, 6.4f), Shapes.Shade(wall, 0.9f));
+            }
+            using (Shapes.Brush(Surf.Metal))
+            {
+                var roof = Shapes.Prism(new List<Vector2> { new Vector2(0f, -s.z / 2f - 0.5f), new Vector2(0f, s.z / 2f + 0.5f), new Vector2(2.6f, 0f) }, s.x / 2f + 0.5f, s.x / 2f + 0.5f);
+                Shapes.MeshObject("Roof", root, roof, Mats.Get(Shapes.Hex("#56605a"), Surf.Metal), new Vector3(0f, s.y, 0f));
+                Shapes.Part(Shapes.Cone, root, new Vector3(0f, s.y + 5.2f, 0f), new Vector3(6.4f, 3.2f, 6.4f), Shapes.Hex("#56605a"), new Vector3(0f, 45f, 0f));
+            }
+            // Часы на башне
+            Shapes.Part(Shapes.LowCylinder, root, new Vector3(0f, s.y + 3f, -3.05f), new Vector3(1.6f, 0.08f, 1.6f), Shapes.Hex("#e8e4d8"), new Vector3(90f, 0f, 0f));
+            for (float x = -s.x / 2f + 2f; x < s.x / 2f - 1f; x += 3f)
+                for (int f = 0; f < 2; f++)
+                {
+                    TallWindow(root, new Vector3(x, (f + 0.55f) * s.y / 2f, -s.z / 2f - 0.05f), 180f, wall);
+                    TallWindow(root, new Vector3(x, (f + 0.55f) * s.y / 2f, s.z / 2f + 0.05f), 0f, wall);
+                }
+            // Навес над перроном (к путям, на юг)
+            using (Shapes.Brush(Surf.Metal))
+            {
+                Shapes.Box(root, new Vector3(0f, 4.2f, -s.z / 2f - 3.2f), new Vector3(s.x + 6f, 0.15f, 6f), Shapes.Hex("#4e5650"), new Vector3(-6f, 0f, 0f));
+                for (float x = -s.x / 2f - 2f; x <= s.x / 2f + 2f; x += 6f)
+                    Shapes.Part(Shapes.LowCylinder, root, new Vector3(x, 2f, -s.z / 2f - 5.6f), new Vector3(0.2f, 4f, 0.2f), Shapes.Hex("#3c403c"));
+            }
+            using (Shapes.Brush(Surf.Concrete))
+                Shapes.Box(root, new Vector3(0f, 0.25f, -s.z / 2f - 3.5f), new Vector3(s.x + 8f, 0.6f, 6.5f), Shapes.Hex("#8a867c"), name: "Platform");
+        }
+
+        /// <summary>Пакгауз: кирпичный склад с двускатной крышей и широкими воротами.</summary>
+        static void Warehouse(Transform root, Vector3 s)
+        {
+            var wall = Shapes.Hex("#8e5a44");
+            using (Shapes.Brush(Surf.Brick))
+                Shapes.Box(root, new Vector3(0f, s.y / 2f, 0f), s, wall, name: "Walls");
+            var roof = Shapes.Prism(new List<Vector2> { new Vector2(0f, -s.z / 2f - 0.4f), new Vector2(0f, s.z / 2f + 0.4f), new Vector2(2.2f, 0f) }, s.x / 2f + 0.4f, s.x / 2f + 0.4f);
+            Shapes.MeshObject("Roof", root, roof, Mats.Get(Shapes.Hex("#5a5a52"), Surf.Metal), new Vector3(0f, s.y, 0f));
+            using (Shapes.Brush(Surf.Planks))
+                for (int i = -1; i <= 1; i += 2)
+                    Shapes.Box(root, new Vector3(i * s.x * 0.25f, 1.7f, -s.z / 2f - 0.06f), new Vector3(3.2f, 3.4f, 0.1f), Shapes.Hex("#4a3a2c"), name: "Gate");
+            for (float x = -s.x / 2f + 2f; x < s.x / 2f - 1f; x += 4f)
+                Shapes.Box(root, new Vector3(x, s.y - 1.2f, s.z / 2f + 0.05f), new Vector3(1.2f, 0.7f, 0.05f), GlassC).GetComponent<MeshRenderer>().sharedMaterial = GlassMat;
+        }
+
+        /// <summary>Элеватор: ряды бетонных силосов, рабочая башня над ними, галерея. Самый высокий ориентир карты.</summary>
+        static void Elevator(Transform root, Vector3 s)
+        {
+            var concrete = Shapes.Hex("#a8a294");
+            using (Shapes.Brush(Surf.Concrete))
+            {
+                float r = 2.7f;
+                for (int ix = 0; ix < 2; ix++)
+                    for (int iz = 0; iz < 4; iz++)
+                    {
+                        var p = new Vector3(-s.x / 2f + r + ix * (r * 2f + 0.2f), (s.y - 4f) / 2f, -s.z / 2f + r + iz * (r * 2f + 0.3f));
+                        Shapes.Part(Shapes.LowCylinder, root, p, new Vector3(r * 2f, s.y - 4f, r * 2f), Shapes.Shade(concrete, 0.95f + 0.05f * ((ix + iz) % 2)));
+                    }
+                Shapes.Box(root, new Vector3(0f, s.y - 3.7f, 0f), new Vector3(s.x, 0.6f, s.z), Shapes.Shade(concrete, 0.9f));
+                // Рабочая башня
+                Shapes.Box(root, new Vector3(s.x * 0.15f, s.y + 1f, -s.z * 0.2f), new Vector3(7f, 9f, 7f), concrete, name: "Tower");
+                Shapes.Box(root, new Vector3(s.x * 0.15f, s.y + 5.7f, -s.z * 0.2f), new Vector3(7.6f, 0.5f, 7.6f), Shapes.Shade(concrete, 0.85f));
+                // Галерея к приёмному складу
+                Shapes.Box(root, new Vector3(s.x * 0.15f, s.y - 1.5f, s.z * 0.45f), new Vector3(2.5f, 2.5f, s.z * 0.5f), Shapes.Shade(concrete, 0.92f));
+            }
+            for (int i = 0; i < 3; i++)
+                Shapes.Box(root, new Vector3(s.x * 0.15f - 3.55f, s.y + i * 2.4f, -s.z * 0.2f), new Vector3(0.05f, 1.2f, 1.6f), GlassC).GetComponent<MeshRenderer>().sharedMaterial = GlassMat;
+            // Пробоина от снаряда в силосе
+            Shapes.Box(root, new Vector3(-s.x / 2f - 0.05f, s.y * 0.6f, -s.z * 0.1f), new Vector3(0.1f, 2.6f, 2.2f), Shapes.Hex("#2a2622"));
+        }
+
+        /// <summary>Кладбищенская часовня: белёный объём, купол-луковка, крест.</summary>
+        static void Chapel(Transform root, Vector3 s)
+        {
+            var white = Shapes.Hex("#d9d2c2");
+            using (Shapes.Brush(Surf.Plaster))
+                Shapes.Box(root, new Vector3(0f, s.y / 2f, 0f), s, white);
+            var roof = Shapes.Prism(new List<Vector2> { new Vector2(0f, -s.x / 2f - 0.3f), new Vector2(0f, s.x / 2f + 0.3f), new Vector2(2f, 0f) }, s.z / 2f + 0.3f, s.z / 2f + 0.3f);
+            Shapes.MeshObject("Roof", root, roof, Mats.Get(Shapes.Hex("#41604a"), Surf.Metal), new Vector3(0f, s.y, 0f), new Vector3(0f, 90f, 0f));
+            using (Shapes.Brush(Surf.Metal))
+            {
+                Shapes.Part(Shapes.LowCylinder, root, new Vector3(0f, s.y + 2.3f, 0f), new Vector3(1.6f, 1f, 1.6f), Shapes.Hex("#41604a"));
+                Shapes.Part(Shapes.LowSphere, root, new Vector3(0f, s.y + 3.3f, 0f), new Vector3(1.9f, 2f, 1.9f), Shapes.Hex("#b0924a"));
+                Shapes.Box(root, new Vector3(0f, s.y + 5f, 0f), new Vector3(0.1f, 1.4f, 0.1f), Shapes.Hex("#b0924a"));
+                Shapes.Box(root, new Vector3(0f, s.y + 5.2f, 0f), new Vector3(0.7f, 0.08f, 0.08f), Shapes.Hex("#b0924a"));
+            }
+            Shapes.Box(root, new Vector3(0f, 1.2f, s.z / 2f + 0.04f), new Vector3(1.4f, 2.4f, 0.06f), Shapes.Hex("#3a2e24"), name: "Door");
+        }
+
+        // ---------- Железная дорога ----------
+
+        /// <summary>Насыпь из щебня, шпалы и рельсы вдоль ломаных MapLayout.Railways (на мосту — по настилу).</summary>
+        static void BuildRailways(Transform decor)
+        {
+            foreach (var line in MapLayout.Railways)
+                for (int i = 0; i + 1 < line.Length; i++)
+                {
+                    var a = line[i];
+                    var b = line[i + 1];
+                    var d = b - a;
+                    float len = d.magnitude;
+                    float yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg;
+                    var dir = d / len;
+                    // Шпалы через 0.75 м, щебень кусками по 6 м, рельсы кусками по 6 м — повторяют рельеф
+                    for (float t = 0f; t < len; t += 6f)
+                    {
+                        var p = a + dir * (t + 3f);
+                        float y = MapLayout.WalkHeight(p.x, p.y);
+                        bool onBridge = MapLayout.RiverDistance(p.x, p.y) < MapLayout.BridgeHalfLength;
+                        var g = Shapes.Group("Rail", decor, new Vector3(p.x, y, p.y), new Vector3(0f, yaw, 0f));
+                        if (!onBridge)
+                            using (Shapes.Brush(Surf.Soil))
+                                Shapes.Box(g, new Vector3(0f, 0.05f, 0f), new Vector3(3.4f, 0.25f, 6.05f), Shapes.Hex("#6e675c"));
+                        using (Shapes.Brush(Surf.Wood))
+                            for (float k = -2.6f; k <= 2.7f; k += 0.75f)
+                                Shapes.Box(g, new Vector3(0f, 0.2f, k), new Vector3(2.5f, 0.12f, 0.24f), Shapes.Hex("#3e3328"));
+                        using (Shapes.Brush(Surf.Metal))
+                            for (int sgn = -1; sgn <= 1; sgn += 2)
+                                Shapes.Box(g, new Vector3(sgn * 0.76f, 0.33f, 0f), new Vector3(0.08f, 0.14f, 6.05f), Shapes.Hex("#5a514a"));
+                    }
+                }
+        }
+
+        // ---------- Мелочи: столбы, кресты, ежи, стога, подбитая техника, воронки ----------
 
         static void BuildProps(Transform decor)
         {
             var rnd = new System.Random(11);
-            var pole = Shapes.Hex("#5a4a3a");
-            using (Shapes.Brush(Surf.Bark))
-                for (float z = -190f; z <= 190f; z += 28f)
-                {
-                    // Телеграфные столбы вдоль главной дороги
-                    float x = MapLayout.MainRoadX(z) + 5f;
-                    if (Mathf.Abs(z) < 50f) continue;
-                    var p = MapLayout.Ground(x, z);
-                    Shapes.Part(Shapes.LowCylinder, decor, p + Vector3.up * 3.5f, new Vector3(0.22f, 7f, 0.22f), pole);
-                    Shapes.Box(decor, p + Vector3.up * 6.6f, new Vector3(1.6f, 0.12f, 0.12f), pole);
-                }
-            // Стога сена на лугах и жнивье
-            using (Shapes.Brush(Surf.Thatch))
-                foreach (var f in MapLayout.Fields)
-                {
-                    if (f.kind != 2) continue;
-                    for (int i = 0; i < 3; i++)
-                    {
-                        float x = Mathf.Lerp(f.rect.xMin + 4f, f.rect.xMax - 4f, (float)rnd.NextDouble());
-                        float z = Mathf.Lerp(f.rect.yMin + 4f, f.rect.yMax - 4f, (float)rnd.NextDouble());
-                        var p = MapLayout.Ground(x, z);
-                        Shapes.Part(Shapes.LowSphere, decor, p + Vector3.up * 1.1f, new Vector3(3f, 3.2f, 3f), Shapes.Hex("#a28d5a"));
-                        Shapes.Part(Shapes.Cone, decor, p + Vector3.up * 2.2f, new Vector3(1.8f, 1.4f, 1.8f), Shapes.Hex("#938050"));
-                    }
-                }
-            // Старые воронки от прошлых боёв
-            for (int i = 0; i < 40; i++)
+            foreach (var pr in MapLayout.Props)
             {
-                float x = -170f + (float)rnd.NextDouble() * 340f, z = -120f + (float)rnd.NextDouble() * 240f;
-                if (MapLayout.RiverDistance(x, z) < 16f || MapLayout.RoadDistance(x, z) < 4f) continue;
+                var p = MapLayout.Ground(pr.xz.x, pr.xz.y);
+                var g = Shapes.Group(pr.kind.ToString(), decor, p, new Vector3(0f, pr.yaw, 0f));
+                switch (pr.kind)
+                {
+                    case PropKind.Pole:
+                        using (Shapes.Brush(Surf.Bark))
+                        {
+                            Shapes.Part(Shapes.LowCylinder, g, Vector3.up * 3.5f, new Vector3(0.22f, 7f, 0.22f), Shapes.Hex("#5a4a3a"));
+                            Shapes.Box(g, Vector3.up * 6.6f, new Vector3(1.6f, 0.12f, 0.12f), Shapes.Hex("#5a4a3a"));
+                        }
+                        break;
+                    case PropKind.Cross:
+                        using (Shapes.Brush(Surf.Wood))
+                        {
+                            Shapes.Box(g, new Vector3(0f, 0.75f, 0f), new Vector3(0.1f, 1.5f, 0.1f), Shapes.Hex("#4a3e32"));
+                            Shapes.Box(g, new Vector3(0f, 1.15f, 0f), new Vector3(0.6f, 0.08f, 0.08f), Shapes.Hex("#4a3e32"));
+                            Shapes.Box(g, new Vector3(0f, 0.65f, 0f), new Vector3(0.35f, 0.06f, 0.06f), Shapes.Hex("#4a3e32"), new Vector3(0f, 0f, -20f));
+                        }
+                        using (Shapes.Brush(Surf.Soil))
+                            Shapes.Box(g, new Vector3(0f, 0.08f, -0.9f), new Vector3(0.8f, 0.2f, 1.7f), Shapes.Hex("#5a4c3a"));
+                        break;
+                    case PropKind.Tombstone:
+                        using (Shapes.Brush(Surf.Stone))
+                        {
+                            Shapes.Box(g, new Vector3(0f, 0.45f, 0f), new Vector3(0.6f, 0.9f, 0.18f), Shapes.Hex("#8e8a80"));
+                            Shapes.Box(g, new Vector3(0f, 0.1f, -0.8f), new Vector3(0.75f, 0.2f, 1.6f), Shapes.Hex("#77736a"));
+                        }
+                        break;
+                    case PropKind.TankTrap:
+                        // Противотанковый «ёж»: три сваренные балки
+                        using (Shapes.Brush(Surf.Metal))
+                            for (int i = 0; i < 3; i++)
+                                Shapes.Box(g, new Vector3(0f, 0.6f, 0f), new Vector3(0.14f, 1.9f, 0.14f), Shapes.Hex("#3a3632"),
+                                    i == 0 ? new Vector3(0f, 0f, 55f) : i == 1 ? new Vector3(0f, 0f, -55f) : new Vector3(55f, 0f, 0f));
+                        break;
+                    case PropKind.HayStack:
+                        using (Shapes.Brush(Surf.Thatch))
+                        {
+                            Shapes.Part(Shapes.LowSphere, g, Vector3.up * 1.1f, new Vector3(3f, 3.2f, 3f), Shapes.Hex("#a28d5a"));
+                            Shapes.Part(Shapes.Cone, g, Vector3.up * 2.2f, new Vector3(1.8f, 1.4f, 1.8f), Shapes.Hex("#938050"));
+                        }
+                        break;
+                    case PropKind.Wreck:
+                        // Сгоревший грузовик: рама, кабина, кузов, колёса
+                        var burnt = Shapes.Hex("#3a332c");
+                        using (Shapes.Brush(Surf.Armor))
+                        {
+                            Shapes.Box(g, new Vector3(0f, 0.7f, 0f), new Vector3(1.9f, 0.25f, 6f), burnt);
+                            Shapes.Box(g, new Vector3(0f, 1.55f, 1.9f), new Vector3(1.9f, 1.5f, 1.6f), Shapes.Shade(burnt, 1.1f));
+                            Shapes.Box(g, new Vector3(0f, 1.1f, 3.0f), new Vector3(1.4f, 0.9f, 0.9f), burnt);
+                            Shapes.Box(g, new Vector3(0f, 1.2f, -1.2f), new Vector3(2.1f, 0.8f, 3.4f), Shapes.Shade(burnt, 0.9f), new Vector3(0f, 0f, 6f));
+                        }
+                        using (Shapes.Brush(Surf.Leather))
+                            foreach (var w in new[] { new Vector3(-0.95f, 0.45f, 2.4f), new Vector3(0.95f, 0.45f, 2.4f), new Vector3(-0.95f, 0.45f, -1.8f), new Vector3(0.95f, 0.45f, -1.8f) })
+                                Shapes.Part(Shapes.LowCylinder, g, w, new Vector3(0.9f, 0.3f, 0.9f), Shapes.Hex("#1c1c1b"), new Vector3(0f, 0f, 90f));
+                        break;
+                }
+            }
+            // Старые воронки от прошлых боёв
+            float H = MapLayout.Half;
+            int craters = Mathf.RoundToInt(40f * (H * H) / (200f * 200f));
+            for (int i = 0; i < craters; i++)
+            {
+                float x = -H * 0.85f + (float)rnd.NextDouble() * H * 1.7f, z = -H * 0.6f + (float)rnd.NextDouble() * H * 1.2f;
+                if (MapLayout.RiverDistance(x, z) < 16f || MapLayout.RoadDistance(x, z) < 4f || MapLayout.RailDistance(x, z) < 5f) continue;
+                if (SurfaceAt(x, z) == MapSurface.Blocked) continue;
                 Effects.Crater(MapLayout.Ground(x, z), 1.2f + (float)rnd.NextDouble() * 1.5f, decor);
             }
         }

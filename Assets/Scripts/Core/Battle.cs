@@ -12,6 +12,9 @@ namespace RealPeace
         public static Battle I { get; private set; }
 
         public Faction PlayerSide { get; private set; }
+        /// <summary>Очки победы в начале и лимит юнитов — с поправкой на карту (на большой карте бой дольше).</summary>
+        public float MaxTickets => GameSettings.I.startTickets * MapLayout.Map.TicketScale;
+        public int UnitCap => GameSettings.I.unitCap + MapLayout.Map.ExtraUnits;
         public Faction EnemySide => PlayerSide.Other();
         public readonly List<Unit> Units = new List<Unit>();
         public VictoryPoint[] Points { get; private set; }
@@ -58,7 +61,7 @@ namespace RealPeace
             var s = GameSettings.I;
             for (int i = 0; i < 2; i++)
             {
-                b.Tickets[i] = s.startTickets;
+                b.Tickets[i] = b.MaxTickets;
                 b.Manpower[i] = s.startManpower;
             }
             b.Points = new VictoryPoint[MapLayout.PointXZ.Length];
@@ -134,7 +137,7 @@ namespace RealPeace
             var def = UnitDefs.Get(side, kind);
             reason = null;
             if (Over) { reason = "Бой окончен"; return false; }
-            if (CountUnits(side) >= GameSettings.I.unitCap) { reason = "Достигнут лимит юнитов"; return false; }
+            if (CountUnits(side) >= UnitCap) { reason = "Достигнут лимит юнитов"; return false; }
             int queued = 0;
             foreach (var q in Queue) if (q.Side == side) queued++;
             if (queued >= 5) { reason = "Очередь подкреплений заполнена"; return false; }

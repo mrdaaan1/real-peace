@@ -284,6 +284,23 @@ namespace RealPeace
                     Emit(I.dirt, at + Vector3.up * 0.05f, new Vector3(Random.Range(-1f, 1f), Random.Range(2f, 4f), Random.Range(-1f, 1f)), 0.05f, 1.2f, Color.white);
         }
 
+        /// <summary>Струя огнемёта: языки пламени и чёрный дым вдоль линии, вспышка света.</summary>
+        public static void Flame(Vector3 from, Vector3 to)
+        {
+            if (I == null) return;
+            var d = to - from;
+            float len = d.magnitude;
+            var dir = d / Mathf.Max(0.01f, len);
+            for (int i = 0; i < 7; i++)
+            {
+                float t = (i + Random.value) / 7f;
+                var p = from + d * t + Random.insideUnitSphere * 0.25f * t + Vector3.up * Mathf.Sin(t * Mathf.PI) * 0.6f;
+                Emit(I.fire, p, dir * Random.Range(4f, 9f) + Vector3.up * 1.2f, Mathf.Lerp(0.5f, 1.8f, t), Random.Range(0.25f, 0.5f), Color.white, Random.Range(0f, 6f));
+            }
+            Emit(I.darkSmoke, to + Vector3.up * 0.8f, Vector3.up * 1.5f + Random.insideUnitSphere * 0.5f, 2f, 3f, new Color(1f, 1f, 1f, 0.6f), Random.Range(0f, 6f));
+            I.Light(to + Vector3.up, 4f, 12f, 0.15f);
+        }
+
         /// <summary>Искры от рикошета по броне.</summary>
         public static void Sparks(Vector3 at, Vector3 normal)
         {

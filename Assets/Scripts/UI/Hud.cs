@@ -159,9 +159,10 @@ namespace RealPeace
 
         void TopBar(Battle battle)
         {
-            var r = Ui(new Rect(vw / 2f - 380f, 10f, 760f, 100f));
+            float topW = 520f + battle.Points.Length * 80f;
+            var r = Ui(new Rect(vw / 2f - topW / 2f, 10f, topW, 100f));
             GUI.Box(r, GUIContent.none, panel);
-            float max = GameSettings.I.startTickets;
+            float max = battle.MaxTickets;
             for (int i = 0; i < 2; i++)
             {
                 var side = (Faction)i;
@@ -205,7 +206,7 @@ namespace RealPeace
             foreach (var p in battle.Points) if (p.Owner == side) owned++;
             float income = GameSettings.I.baseIncome + GameSettings.I.incomePerPoint * owned;
             GUI.Label(new Rect(r.x + 12f, r.y + 8f, r.width, 26f), $"Живая сила: <b>{Mathf.FloorToInt(battle.Manpower[(int)side])}</b>  <color=#9fd08a>+{income:0.#}/с</color>", label);
-            GUI.Label(new Rect(r.x + 12f, r.y + 36f, r.width, 26f), $"Юнитов: {battle.CountUnits(side)}/{GameSettings.I.unitCap}    Точек: {owned}/{battle.Points.Length}", small);
+            GUI.Label(new Rect(r.x + 12f, r.y + 36f, r.width, 26f), $"Юнитов: {battle.CountUnits(side)}/{battle.UnitCap}    Точек: {owned}/{battle.Points.Length}", small);
 
             float y = r.yMax + 8f;
             foreach (var n in battle.Notes)
@@ -327,23 +328,24 @@ namespace RealPeace
             GUI.Label(new Rect(bx, r.y + 104f, 160f, 54f), "ПКМ — идти/атаковать\nShift — маршрут, F/Ctrl — с атакой", new GUIStyle(small) { fontSize = 12 });
         }
 
+        static readonly UnitKind[] BuyOrder = { UnitKind.Riflemen, UnitKind.MachineGun, UnitKind.AntiTank, UnitKind.Tank, UnitKind.Mortar, UnitKind.Sniper, UnitKind.Sappers };
+
         void Reinforcements(Battle battle)
         {
             var side = battle.PlayerSide;
-            var r = Ui(new Rect(vw - 330f, vh - 290f, 320f, 280f));
+            var r = Ui(new Rect(vw - 330f, vh - 440f, 320f, 430f));
             GUI.Box(r, GUIContent.none, panel);
             GUI.Label(new Rect(r.x + 12f, r.y + 8f, 300f, 26f), "Подкрепления", title);
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < BuyOrder.Length; i++)
             {
-                var kind = (UnitKind)i;
+                var kind = BuyOrder[i];
                 var def = UnitDefs.Get(side, kind);
                 bool afford = battle.Manpower[(int)side] >= def.Cost;
-                var br = new Rect(r.x + 10f, r.y + 42f + i * 46f, 300f, 42f);
-                var content = new GUIContent($"<b>{def.Name}</b>  <size=13>F{5 + i}</size>\n<size=13><color={(afford ? "#c8e8a8" : "#d08070")}>{def.Cost} ж/с</color></size>", def.Description);
+                var br = new Rect(r.x + 10f, r.y + 40f + i * 44f, 300f, 40f);
+                var content = new GUIContent($"<b>{def.Name}</b>  <size=12>F{5 + (int)kind}</size>\n<size=13><color={(afford ? "#c8e8a8" : "#d08070")}>{def.Cost} ж/с</color></size>", def.Description);
                 if (GUI.Button(br, content, button) && PlayerCommander.I != null) PlayerCommander.I.Buy(kind);
             }
-            // Очередь
-            float y = r.y + 230f;
+            float y = r.y + 356f;
             foreach (var q in battle.Queue)
             {
                 if (q.Side != side) continue;
@@ -448,7 +450,7 @@ namespace RealPeace
                 "<b>X</b> — стоп, <b>R</b> — отступить на базу (там отряд пополняется, танк чинится)\n" +
                 "<b>Группы:</b> Ctrl+1…9 — запомнить, 1…9 — выбрать, дважды — камера к группе\n" +
                 "<b>Пробел</b> — пауза (приказы можно отдавать на паузе), <b>+ / −</b> — скорость\n" +
-                "<b>F5–F8</b> — подкрепления, <b>Esc</b> — меню\n\n" +
+                "<b>F5–F11</b> — подкрепления, <b>Esc</b> — меню\n\n" +
                 "<b>Советы:</b> пехота в укрытии (лес, изгороди, стены, воронки) получает меньше попаданий. Пулемёт прижимает пехоту — " +
                 "обходите его с фланга. Броня танка в лоб толще всего: заходите в борт и корму. Пехота вплотную бросает гранату в танк. " +
                 "Захватывает точки только пехота.", label);
@@ -486,30 +488,43 @@ namespace RealPeace
             Fill(new Rect(0f, 0f, vw, vh), new Color(0f, 0f, 0f, 0.25f));
             Fill(new Rect(0f, 0f, 760f, vh), new Color(0.05f, 0.05f, 0.045f, 0.78f));
             GUI.Label(new Rect(60f, 70f, 680f, 70f), "<b>REAL PEACE</b>", new GUIStyle(label) { fontSize = 60, wordWrap = false });
-            GUI.Label(new Rect(64f, 148f, 680f, 30f), "Битва за Токмачку · осень 1943 · Запорожье", new GUIStyle(label) { fontSize = 22, normal = { textColor = Shapes.Hex("#c8b88a") } });
+            GUI.Label(new Rect(64f, 148f, 680f, 30f), MapLayout.Map.Subtitle, new GUIStyle(label) { fontSize = 22, normal = { textColor = Shapes.Hex("#c8b88a") } });
 
-            GUI.Label(new Rect(64f, 220f, 600f, 30f), "Выберите сторону", title);
-            SideCard(new Rect(64f, 262f, 300f, 250f), Faction.USSR,
-                "Красная армия наступает на Токмачку и рвёт «Линию Вотан». Отделения по 6 бойцов, «Максим», ПТРД и быстрый Т-34-76.");
-            SideCard(new Rect(384f, 262f, 300f, 250f), Faction.Germany,
-                "Вермахт удерживает Токмачку на «Линии Вотан». Отделения по 5 солдат, скорострельный MG 42, «Панцершрек» и Pz.IV.");
+            GUI.Label(new Rect(64f, 196f, 600f, 30f), "Карта", title);
+            MapCard(new Rect(64f, 234f, 300f, 92f), MapId.Tokmachka);
+            MapCard(new Rect(384f, 234f, 300f, 92f), MapId.Melitopol);
+
+            GUI.Label(new Rect(64f, 346f, 600f, 30f), "Сторона", title);
+            SideCard(new Rect(64f, 384f, 300f, 190f), Faction.USSR,
+                "Красная армия прорывает «Линию Вотан». Отделения по 6 бойцов, «Максим», ПТРД и быстрый Т-34-76.");
+            SideCard(new Rect(384f, 384f, 300f, 190f), Faction.Germany,
+                "Вермахт держит «Линию Вотан». Отделения по 5 солдат, скорострельный MG 42, «Панцершрек» и Pz.IV.");
 
             var s = GameSettings.I;
-            GUI.Label(new Rect(64f, 540f, 600f, 30f), "Сложность", title);
+            GUI.Label(new Rect(64f, 592f, 600f, 30f), "Сложность", title);
             string[] diff = { "Лёгкая", "Обычная", "Тяжёлая" };
             for (int i = 0; i < 3; i++)
-                if (GUI.Button(new Rect(64f + i * 210f, 578f, 200f, 44f), diff[i], (int)s.difficulty == i ? buttonOn : button))
+                if (GUI.Button(new Rect(64f + i * 210f, 628f, 200f, 44f), diff[i], (int)s.difficulty == i ? buttonOn : button))
                     s.difficulty = (Difficulty)i;
-            if (GUI.Button(new Rect(64f, 636f, 410f, 44f), "Туман войны: " + (s.fogOfWar ? "включён" : "выключен"), s.fogOfWar ? buttonOn : button))
+            if (GUI.Button(new Rect(64f, 682f, 410f, 44f), "Туман войны: " + (s.fogOfWar ? "включён" : "выключен"), s.fogOfWar ? buttonOn : button))
                 s.fogOfWar = !s.fogOfWar;
 
-            if (GUI.Button(new Rect(64f, 712f, 620f, 70f), $"<size=26><b>В бой за {Factions.Name(chosenSide)}</b></size>", buttonOn))
+            if (GUI.Button(new Rect(64f, 748f, 620f, 70f), $"<size=26><b>В бой за {Factions.Name(chosenSide)}</b></size>", buttonOn))
                 Game.StartBattle(chosenSide);
             GUI.enabled = false;
-            GUI.Button(new Rect(64f, 796f, 620f, 50f), "Кампания: Курская дуга — скоро", button);
+            GUI.Button(new Rect(64f, 830f, 620f, 46f), "Кампания: Мелитопольская операция — скоро", button);
             GUI.enabled = true;
-            if (GUI.Button(new Rect(64f, 860f, 300f, 44f), "Выход", button)) Game.Quit();
+            if (GUI.Button(new Rect(64f, 888f, 300f, 44f), "Выход", button)) Game.Quit();
             GUI.Label(new Rect(64f, vh - 50f, 680f, 30f), "F1 в бою — управление и советы", small);
+        }
+
+        void MapCard(Rect r, MapId id)
+        {
+            var def = MapLayout.Create(id);
+            bool on = MapLayout.Current == id;
+            if (GUI.Button(r, GUIContent.none, on ? buttonOn : button) && !on) Game.SelectMap(id);
+            GUI.Label(new Rect(r.x + 14f, r.y + 10f, r.width - 28f, 28f), "<b>" + def.Title + "</b>", new GUIStyle(title) { fontSize = 20 });
+            GUI.Label(new Rect(r.x + 14f, r.y + 40f, r.width - 28f, 50f), def.Description, new GUIStyle(small) { fontSize = 14 });
         }
 
         void SideCard(Rect r, Faction side, string text)
@@ -519,7 +534,7 @@ namespace RealPeace
             Fill(new Rect(r.x, r.y, r.width, 8f), Factions.Ui(side));
             GUI.Label(new Rect(r.x + 16f, r.y + 20f, r.width - 32f, 34f), "<b>" + Factions.Name(side) + "</b>", new GUIStyle(title) { fontSize = 28 });
             GUI.Label(new Rect(r.x + 16f, r.y + 58f, r.width - 32f, 24f), Factions.ArmyName(side), new GUIStyle(small) { fontSize = 16 });
-            GUI.Label(new Rect(r.x + 16f, r.y + 92f, r.width - 32f, 150f), text, new GUIStyle(label) { fontSize = 16 });
+            GUI.Label(new Rect(r.x + 16f, r.y + 88f, r.width - 32f, 100f), text, new GUIStyle(label) { fontSize = 15 });
         }
     }
 }

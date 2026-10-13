@@ -35,7 +35,7 @@ public static class GameBuilder
         ProjectSetup.SetupMenu(); // URP, образцы материалов в Resources (иначе шейдеры не попадут в сборку)
         PlayerSettings.productName = "Real Peace";
         PlayerSettings.companyName = "Real Peace";
-        PlayerSettings.bundleVersion = "0.1";
+        PlayerSettings.bundleVersion = "0.2";
         PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, "com.realpeace.game");
         PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
         PlayerSettings.resizableWindow = true;

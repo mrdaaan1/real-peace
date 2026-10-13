@@ -28,9 +28,15 @@ namespace RealPeace
         Hud hud;
         Transform battleRoot;
 
+        const string MapKey = "RealPeace.Map";
+
         void Awake()
         {
             I = this;
+            // Карта: аргумент автотеста или последняя выбранная в меню
+            var arg = Autotest.MapArg;
+            var id = arg ?? (MapId)Mathf.Clamp(PlayerPrefs.GetInt(MapKey, 0), 0, 1);
+            MapLayout.Select(id);
             Application.targetFrameRate = 120;
         }
 
@@ -102,6 +108,16 @@ namespace RealPeace
             rig.SetView(b + new Vector3(0f, 0f, -Factions.NorthSign(side) * 30f), side == Faction.USSR ? 0f : 180f, 75f, true);
         }
 
+        /// <summary>Выбрать карту в меню: запоминаем и перестраиваем мир (перезагрузка сцены).</summary>
+        public void SelectMap(MapId id)
+        {
+            PlayerPrefs.SetInt(MapKey, (int)id);
+            PlayerPrefs.Save();
+            pendingStart = null;
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
         public void ToMenu()
         {
             pendingStart = null;
@@ -131,6 +147,16 @@ namespace RealPeace
             return def;
         }
 
+        public static MapId? MapArg
+        {
+            get
+            {
+                var m = Arg("-rpMap", null);
+                if (m == null) return null;
+                return m == "Melitopol" ? MapId.Melitopol : MapId.Tokmachka;
+            }
+        }
+
         public static bool Enabled => System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-rpAutotest") >= 0;
 
         public static IEnumerator Run(GameBootstrap game)
@@ -145,12 +171,9 @@ namespace RealPeace
             // Скриншоты карты до боя (несколько кадров — пусть освещение и отражения успеют обновиться)
             for (int i = 0; i < 20; i++) yield return null;
             var rig = game.Rig;
-            Shot(rig, outDir, "01_village", MapLayout.Point(1) + new Vector3(-10f, 0f, -20f), 35f, 55f);
-            Shot(rig, outDir, "02_overview", new Vector3(-20f, 0f, 0f), 20f, 165f);
-            Shot(rig, outDir, "03_mill_river", MapLayout.Point(0) + new Vector3(25f, 0f, -10f), -60f, 50f);
-            Shot(rig, outDir, "04_closeup_church", MapLayout.Point(1) + new Vector3(8f, 0f, 2f), 200f, 16f);
-            Shot(rig, outDir, "05_forest", new Vector3(66f, 0f, 60f), 160f, 30f);
-            Shot(rig, outDir, "05b_mill_close", new Vector3(-126f, 0f, 14f), 200f, 24f);
+            Shot(rig, outDir, "00_overview", new Vector3(-20f, 0f, 0f), 20f, 170f);
+            for (int i = 0; i < MapLayout.PointXZ.Length; i++)
+                Shot(rig, outDir, $"0{i + 1}_point_{i}", MapLayout.Point(i) + new Vector3(-10f, 0f, -18f), 30f + i * 50f, 48f);
 
             GameSettings.I.fogOfWar = false;
             game.BeginBattle(side);
@@ -159,13 +182,16 @@ namespace RealPeace
             // Сразу дадим ИИ живой силы на танки — проверим и технику
             Battle.I.Manpower[0] += 1200f;
             Battle.I.Manpower[1] += 1200f;
-            Battle.I.Order(side, UnitKind.Tank, out _);
+            // Одинаковые заказы обеим сторонам — тест не должен давать фору
+            foreach (Faction f in new[] { Faction.USSR, Faction.Germany })
+                foreach (var k in new[] { UnitKind.Tank, UnitKind.Sappers, UnitKind.Mortar, UnitKind.Sniper })
+                    Battle.I.Order(f, k, out _);
             // Игрок-«бот»: тоже ИИ за свою сторону
             AiCommander.Create(Battle.I.transform, side);
             Battle.I.SetSpeed(3f);
 
             float t = 0f, nextLog = 0f, nextShot = 40f;
-            bool tankShot = false;
+            bool tankShot = false, newShot = false;
             int shotN = 7;
             while (t < seconds && !Battle.I.Over)
             {
@@ -195,6 +221,14 @@ namespace RealPeace
                     Debug.Log($"[Autotest] t={t:0} fps={1f / Mathf.Max(0.0001f, Time.unscaledDeltaTime):0} СССР: юн {b.CountUnits(Faction.USSR)} очки {b.Tickets[0]:0} ж/с {b.Manpower[0]:0} | " +
                               $"Германия: юн {b.CountUnits(Faction.Germany)} очки {b.Tickets[1]:0} ж/с {b.Manpower[1]:0} | {pts}| потери {b.Losses[0]}/{b.Losses[1]}");
                 }
+                if (!newShot && t > 75f)
+                    foreach (var u in Battle.I.Units)
+                        if (u.Alive && (u.Def.Kind == UnitKind.Sappers || u.Def.Kind == UnitKind.Mortar))
+                        {
+                            newShot = true;
+                            Shot(rig, outDir, "06c_" + u.Def.Kind, u.Position, Random.Range(0f, 360f), 12f);
+                            break;
+                        }
                 if (!tankShot && t > 45f)
                     foreach (var u in Battle.I.Units)
                         if (u is Tank && u.Alive)

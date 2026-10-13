@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace RealPeace
 {
-    public enum UnitKind { Riflemen, MachineGun, AntiTank, Tank }
+    public enum UnitKind { Riflemen, MachineGun, AntiTank, Tank, Mortar, Sniper, Sappers }
 
-    public enum ShotSound { Rifle, Smg, MachineGun, AtRifle, Cannon, Rocket }
+    public enum ShotSound { Rifle, Smg, MachineGun, AtRifle, Cannon, Rocket, Mortar, Flame }
 
     /// <summary>Оружие: дальность, урон, скорострельность, меткость, бронепробитие, подавление.</summary>
     public class Weapon
@@ -30,6 +30,13 @@ namespace RealPeace
         public bool VsVehicles;
         public bool Tracer;
         public ShotSound Sound;
+        /// <summary>Навесной огонь (миномёт): стреляет по замеченным своими целям без прямой видимости.</summary>
+        public bool Indirect;
+        public float MinRange;
+        /// <summary>Огнемёт: бьёт струёй по площади, укрытия не спасают.</summary>
+        public bool Flame;
+        /// <summary>Модель оружия из Weapons.bytes (если не задана — по звуку и стороне).</summary>
+        public string Model;
 
         public AudioClip Clip
         {
@@ -42,6 +49,8 @@ namespace RealPeace
                     case ShotSound.AtRifle: return SoundFactory.AtRifle;
                     case ShotSound.Cannon: return SoundFactory.Cannon;
                     case ShotSound.Rocket: return SoundFactory.Grenade;
+                    case ShotSound.Mortar: return SoundFactory.MortarShot;
+                    case ShotSound.Flame: return SoundFactory.Flame;
                     default: return SoundFactory.Rifle;
                 }
             }
@@ -93,6 +102,13 @@ namespace RealPeace
         static readonly Weapon Ptrd = new Weapon { Name = "ПТРД-41", Range = 38f, Damage = 55f, Cooldown = 3.2f, AccNear = 0.7f, AccFar = 0.4f, Penetration = 45f, VsInfantry = false, VsVehicles = true, Tracer = true, Sound = ShotSound.AtRifle };
         static readonly Weapon Schreck = new Weapon { Name = "Панцершрек", Range = 30f, Damage = 160f, Cooldown = 7f, AccNear = 0.65f, AccFar = 0.3f, Penetration = 150f, Splash = 1.5f, VsInfantry = false, VsVehicles = true, Sound = ShotSound.Rocket };
 
+        static readonly Weapon MosinSniper = new Weapon { Name = "Снайперская винтовка Мосина с ПУ", Range = 72f, Damage = 95f, Cooldown = 4.6f, AccNear = 0.92f, AccFar = 0.72f, Suppression = 0.06f, Sound = ShotSound.Rifle, Model = "MosinSniper" };
+        static readonly Weapon Kar98Sniper = new Weapon { Name = "Kar98k с ZF 39", Range = 72f, Damage = 95f, Cooldown = 4.4f, AccNear = 0.92f, AccFar = 0.72f, Suppression = 0.06f, Sound = ShotSound.Rifle, Model = "Kar98Sniper" };
+        static readonly Weapon Bm37 = new Weapon { Name = "82-мм миномёт БМ-37", Range = 100f, MinRange = 18f, Damage = 70f, Cooldown = 4.8f, AccNear = 0.5f, AccFar = 0.3f, Splash = 4.5f, Suppression = 0.3f, SetupTime = 3f, Indirect = true, Sound = ShotSound.Mortar, Model = "Mortar" };
+        static readonly Weapon Grw34 = new Weapon { Name = "8-cm Granatwerfer 34", Range = 100f, MinRange = 18f, Damage = 70f, Cooldown = 4.6f, AccNear = 0.52f, AccFar = 0.3f, Splash = 4.5f, Suppression = 0.3f, SetupTime = 3f, Indirect = true, Sound = ShotSound.Mortar, Model = "Mortar" };
+        static readonly Weapon Roks3 = new Weapon { Name = "Огнемёт РОКС-3", Range = 17f, Damage = 20f, Cooldown = 3.2f, Burst = 8, BurstInterval = 0.1f, AccNear = 0.9f, AccFar = 0.7f, Suppression = 0.06f, Flame = true, Sound = ShotSound.Flame, Model = "Roks3" };
+        static readonly Weapon Fmw41 = new Weapon { Name = "Flammenwerfer 41", Range = 18f, Damage = 20f, Cooldown = 3.2f, Burst = 8, BurstInterval = 0.1f, AccNear = 0.9f, AccFar = 0.7f, Suppression = 0.06f, Flame = true, Sound = ShotSound.Flame, Model = "Fmw41" };
+
         public static readonly Weapon AtGrenade = new Weapon { Name = "Противотанковая граната", Range = 14f, Damage = 120f, Cooldown = 28f, AccNear = 0.75f, AccFar = 0.45f, Penetration = 60f, Splash = 2f, VsInfantry = false, VsVehicles = true, Sound = ShotSound.Rocket };
 
         static readonly Weapon F34AP = new Weapon { Name = "76-мм Ф-34 (бронебойный)", Range = 55f, Damage = 160f, Cooldown = 5.5f, AccNear = 0.8f, AccFar = 0.45f, Penetration = 85f, VsInfantry = false, VsVehicles = true, Sound = ShotSound.Cannon };
@@ -129,6 +145,27 @@ namespace RealPeace
                         Description = "Противотанковое ружьё: бьёт технику в борт и корму. Против пехоты — винтовка.",
                         Soldiers = 2, Weapons = new[] { Ptrd, Mosin }, Speed = 3.4f,
                     };
+                case UnitKind.Mortar:
+                    return new UnitDef
+                    {
+                        Kind = kind, Side = Faction.USSR, Name = "Миномётный расчёт БМ-37", Short = "Миномёт", Cost = 260, BuildTime = 12f,
+                        Description = "82-мм миномёт: навесной огонь до 100 м по целям, которые видят свои. Выкуривает пехоту из укрытий. Стреляет только с места.",
+                        Soldiers = 3, Weapons = new[] { Bm37, Mosin }, Speed = 3.1f,
+                    };
+                case UnitKind.Sniper:
+                    return new UnitDef
+                    {
+                        Kind = kind, Side = Faction.USSR, Name = "Снайпер", Short = "Снайпер", Cost = 220, BuildTime = 10f,
+                        Description = "Бьёт на 70 м и почти всегда насмерть. Неподвижного почти не видно. Против танков бесполезен.",
+                        Soldiers = 1, Weapons = new[] { MosinSniper }, Speed = 3.7f, Sight = 55f,
+                    };
+                case UnitKind.Sappers:
+                    return new UnitDef
+                    {
+                        Kind = kind, Side = Faction.USSR, Name = "Штурмовые инженеры-сапёры", Short = "Сапёры", Cost = 280, BuildTime = 10f,
+                        Description = "ШИСБр: огнемёт РОКС-3 и ППШ. Выжигают пехоту из домов и окопов — укрытия от огня не спасают.",
+                        Soldiers = 5, Weapons = new[] { Ppsh, Roks3, Ppsh }, SoldierHp = 75f, HasAtGrenades = true, Speed = 3.7f,
+                    };
                 default:
                     return new UnitDef
                     {
@@ -164,6 +201,27 @@ namespace RealPeace
                         Kind = kind, Side = Faction.Germany, Name = "Расчёт «Панцершрек»", Short = "Шрек", Cost = 240, BuildTime = 10f,
                         Description = "Реактивный гранатомёт: пробивает любой танк, но долго перезаряжается и бьёт недалеко.",
                         Soldiers = 2, Weapons = new[] { Schreck, Kar98 }, Speed = 3.4f,
+                    };
+                case UnitKind.Mortar:
+                    return new UnitDef
+                    {
+                        Kind = kind, Side = Faction.Germany, Name = "Миномётный расчёт GrW 34", Short = "Миномёт", Cost = 260, BuildTime = 12f,
+                        Description = "8-см миномёт: навесной огонь до 100 м по целям, которые видят свои. Выкуривает пехоту из укрытий. Стреляет только с места.",
+                        Soldiers = 3, Weapons = new[] { Grw34, Kar98 }, Speed = 3.2f,
+                    };
+                case UnitKind.Sniper:
+                    return new UnitDef
+                    {
+                        Kind = kind, Side = Faction.Germany, Name = "Снайпер (Scharfschütze)", Short = "Снайпер", Cost = 220, BuildTime = 10f,
+                        Description = "Бьёт на 70 м и почти всегда насмерть. Неподвижного почти не видно. Против танков бесполезен.",
+                        Soldiers = 1, Weapons = new[] { Kar98Sniper }, Speed = 3.6f, Sight = 55f,
+                    };
+                case UnitKind.Sappers:
+                    return new UnitDef
+                    {
+                        Kind = kind, Side = Faction.Germany, Name = "Штурмпионеры", Short = "Пионеры", Cost = 280, BuildTime = 10f,
+                        Description = "Огнемёт Flammenwerfer 41 и MP 40. Выжигают пехоту из домов и окопов — укрытия от огня не спасают.",
+                        Soldiers = 4, Weapons = new[] { Mp40, Fmw41, Mp40 }, SoldierHp = 85f, HasAtGrenades = true, Speed = 3.6f,
                     };
                 default:
                     return new UnitDef

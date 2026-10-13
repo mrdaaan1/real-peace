@@ -174,25 +174,38 @@ namespace RealPeace
             foreach (var q in battle.Queue) if (q.Side == side) queued++;
             if (queued > 0) return;
 
-            int rifle = 0, mg = 0, at = 0, tank = 0;
+            int rifle = 0, mg = 0, at = 0, tank = 0, mortar = 0, sniper = 0, sappers = 0;
             foreach (var u in mine)
                 switch (u.Def.Kind)
                 {
                     case UnitKind.Riflemen: rifle++; break;
                     case UnitKind.MachineGun: mg++; break;
                     case UnitKind.AntiTank: at++; break;
-                    default: tank++; break;
+                    case UnitKind.Tank: tank++; break;
+                    case UnitKind.Mortar: mortar++; break;
+                    case UnitKind.Sniper: sniper++; break;
+                    case UnitKind.Sappers: sappers++; break;
                 }
 
             UnitKind want;
             if (enemyTanks > at) want = UnitKind.AntiTank;
             else if (rifle < 3) want = UnitKind.Riflemen;
+            else if (mortar < 1 && battle.Elapsed > 60f) want = UnitKind.Mortar;
             else if (tank < 2 && battle.Elapsed > 90f) want = UnitKind.Tank;
             else if (mg < 2) want = UnitKind.MachineGun;
-            else want = Random.value < 0.6f ? UnitKind.Riflemen : UnitKind.Tank;
+            else if (sappers < 1) want = UnitKind.Sappers;
+            else if (sniper < 1) want = UnitKind.Sniper;
+            else
+            {
+                float r = Random.value;
+                want = r < 0.4f ? UnitKind.Riflemen : r < 0.65f ? UnitKind.Tank : r < 0.8f ? UnitKind.Sappers
+                     : r < 0.9f && mortar < 2 ? UnitKind.Mortar : sniper < 2 ? UnitKind.Sniper : UnitKind.Riflemen;
+            }
 
+            // Войск мало — сначала пехота, а не копить на танк
+            if (mine.Count < 6 && want == UnitKind.Tank) want = rifle <= mg ? UnitKind.Riflemen : UnitKind.MachineGun;
             var def = UnitDefs.Get(side, want);
-            // Копим на танк, не тратя на мелочь
+            // Копим на нужный юнит, не тратя на мелочь
             if (battle.Manpower[(int)side] < def.Cost) return;
             battle.Order(side, want, out _);
         }

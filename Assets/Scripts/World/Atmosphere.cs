@@ -19,11 +19,11 @@ namespace RealPeace
             // Солнце: вторая половина дня, свет косой — рельеф и тени читаются
             var sunGo = new GameObject("Sun");
             sunGo.transform.SetParent(world, false);
-            sunGo.transform.rotation = Quaternion.Euler(38f, -38f, 0f);
+            sunGo.transform.rotation = Quaternion.Euler(MapLayout.Map.SunEuler);
             Sun = sunGo.AddComponent<Light>();
             Sun.type = LightType.Directional;
-            Sun.color = Shapes.Hex("#ffe7c4");
-            Sun.intensity = 2.1f;
+            Sun.color = MapLayout.Map.SunColor;
+            Sun.intensity = MapLayout.Map.SunIntensity;
             Sun.shadows = LightShadows.Soft;
             Sun.shadowStrength = 0.92f;
             Sun.shadowBias = 0.04f;
@@ -55,8 +55,8 @@ namespace RealPeace
             // Дымка у горизонта
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = Shapes.Hex("#a9aea6");
-            RenderSettings.fogDensity = 0.0032f;
+            RenderSettings.fogColor = MapLayout.Map.FogColor;
+            RenderSettings.fogDensity = MapLayout.Map.FogDensity;
 
             // Отражения неба — реальное время, один раз при загрузке
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;

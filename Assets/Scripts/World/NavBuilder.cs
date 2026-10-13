@@ -110,6 +110,12 @@ namespace RealPeace
                 Block((a + c) / 2f + Vector3.up * 5f, new Vector3(w, 30f, d.magnitude), Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg, list);
             }
 
+            foreach (var p in MapLayout.Props)
+            {
+                if (p.kind == PropKind.TankTrap) Block(new Vector3(p.xz.x, 5f, p.xz.y), new Vector3(1.6f, 30f, 1.6f), p.yaw, list);
+                else if (p.kind == PropKind.Wreck) Block(new Vector3(p.xz.x, 5f, p.xz.y), new Vector3(2.4f, 30f, 6.4f), p.yaw, list);
+            }
+
             foreach (var t in MapLayout.Trees)
                 Block(new Vector3(t.x, 5f, t.z), new Vector3(0.7f * t.y, 30f, 0.7f * t.y), 0f, list);
 

@@ -35,8 +35,8 @@ namespace RealPeace
             var dryTex = TextureFactory.GrassClump("DryClump", new Color(0.3f, 0.29f, 0.14f), new Color(0.66f, 0.6f, 0.36f), 26, 603, false);
             var wheatTex = TextureFactory.GrassClump("WheatClump", new Color(0.45f, 0.4f, 0.2f), new Color(0.86f, 0.74f, 0.42f), 22, 605, true);
 
-            var grass = new Layer { mesh = FoliageMeshes.Clump("Grass", 0.9f, 0.55f), material = Mats.Foliage("GrassMat", grassTex, Color.white, 0.12f, 0.9f, 90f, DrawDistance - 5f) };
-            var dry = new Layer { mesh = FoliageMeshes.Clump("Dry", 0.8f, 0.45f), material = Mats.Foliage("DryMat", dryTex, Color.white, 0.1f, 0.7f, 90f, DrawDistance - 5f) };
+            var grass = new Layer { mesh = FoliageMeshes.Clump("Grass", 0.9f, 0.55f), material = Mats.Foliage("GrassMat_" + MapLayout.Current, grassTex, MapLayout.Map.GrassTint, 0.12f, 0.9f, 90f, DrawDistance - 5f) };
+            var dry = new Layer { mesh = FoliageMeshes.Clump("Dry", 0.8f, 0.45f), material = Mats.Foliage("DryMat_" + MapLayout.Current, dryTex, MapLayout.Map.GrassTint, 0.1f, 0.7f, 90f, DrawDistance - 5f) };
             var wheat = new Layer { mesh = FoliageMeshes.Clump("Wheat", 0.8f, 1.1f), material = Mats.Foliage("WheatMat", wheatTex, Color.white, 0.25f, 0.8f, 100f, DrawDistance - 5f) };
             g.layers.Add(grass);
             g.layers.Add(dry);

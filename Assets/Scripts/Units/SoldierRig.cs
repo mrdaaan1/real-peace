@@ -20,6 +20,7 @@ namespace RealPeace
         float flinch;
         Vector3 gunReadyPos, gunAimPos, gunProneAimPos;
         Quaternion gunReadyRot;
+        Quaternion gunAimRot = Quaternion.identity;
         Vector3 deadTilt;
 
         public static SoldierRig Build(Transform parent, Faction side, Weapon weapon, int seed)
@@ -128,6 +129,7 @@ namespace RealPeace
                 case ShotSound.Rocket: gunName = "Schreck"; break;
                 default: gunName = side == Faction.USSR ? "Mosin" : "Kar98"; break;
             }
+            if (!string.IsNullOrEmpty(weapon.Model)) gunName = weapon.Model;
             Material Gun(string part, string slot)
             {
                 switch (slot)
@@ -148,6 +150,20 @@ namespace RealPeace
             rig.gunAimPos = new Vector3(0.13f, 1.4f, 0.0f);
             if (weapon.Sound == ShotSound.Rocket) { rig.gunAimPos = new Vector3(0.18f, 1.5f, -0.1f); rig.gunReadyPos = new Vector3(0.18f, 1.45f, -0.2f); rig.gunReadyRot = Quaternion.identity; }
             if (weapon.Sound == ShotSound.MachineGun || weapon.Sound == ShotSound.AtRifle) { rig.gunReadyPos = new Vector3(0.16f, 1.05f, -0.1f); rig.gunReadyRot = Quaternion.Euler(-35f, 0f, 0f); }
+            if (weapon.Indirect)
+            {
+                // Миномёт: на марше — за спиной стволом вниз, в бою — на земле перед расчётом, ствол вверх
+                rig.gunReadyPos = new Vector3(0.05f, 1.45f, -0.22f);
+                rig.gunReadyRot = Quaternion.Euler(170f, 0f, 0f);
+                rig.gunAimPos = new Vector3(0f, 0.45f, 0.85f);
+                rig.gunAimRot = Quaternion.Euler(-58f, 0f, 0f);
+            }
+            if (weapon.Flame)
+            {
+                // Баллоны огнемёта за спиной
+                var pack = Shapes.Group("FlamePack", rig.body, new Vector3(0f, 1.22f, -0.24f));
+                ModelLibrary.BuildPart(weapons, gunName + "_Pack", pack, Gun);
+            }
             rig.gunProneAimPos = rig.gunAimPos;
             rig.gun.localPosition = rig.gunReadyPos;
             rig.gun.localRotation = rig.gunReadyRot;
@@ -280,7 +296,7 @@ namespace RealPeace
 
             // Оружие: у бедра или у плеча; лёжа — корпус повёрнут, оружие поворачиваем обратно вперёд
             gun.localPosition = Vector3.Lerp(gunReadyPos, gunAimPos, aim);
-            var gunRot = Quaternion.Slerp(gunReadyRot, Quaternion.identity, aim);
+            var gunRot = Quaternion.Slerp(gunReadyRot, gunAimRot, aim);
             gun.localRotation = Quaternion.Euler(-lean, 0f, 0f) * gunRot;
             if (prone > 0.01f) gun.localPosition = Vector3.Lerp(gun.localPosition, new Vector3(0.1f, 1.75f, 0.25f), prone);
 

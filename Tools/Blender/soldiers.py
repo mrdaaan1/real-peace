@@ -253,6 +253,55 @@ def weapons():
     K.box("Schreck_Window", "Schreck", (-0.12, 0.618, 0.14), (0.06, 0.008, 0.05), "dark", 0)
     K.box("Schreck_Grip", "Schreck", (0, 0.2, -0.09), (0.025, 0.04, 0.09), "wood", 0.004)
 
+
+    # Снайперская винтовка Мосина с прицелом ПУ (без штыка, затвор с отогнутой рукояткой)
+    weapon("MosinSniper", 1.24)
+    stock("MosinSniper", 0.0, 0.98, 0.13, 0.045)
+    K.cyl("MosinSniper_Barrel", "MosinSniper", (0, 0.86, 0.025), 0.012, 0.76, "Y", 10, "metal", 0)
+    K.cyl("MosinSniper_Receiver", "MosinSniper", (0, 0.42, 0.03), 0.018, 0.2, "Y", 10, "metal", 0.002)
+    tube("MosinSniper", "MosinSniper_Bolt", (0.0, 0.4, 0.03), (0.06, 0.4, -0.03), 0.006, "metal", 6)
+    K.cyl("MosinSniper_Scope", "MosinSniper", (0.0, 0.45, 0.085), 0.016, 0.27, "Y", 12, "metal", 0.002)
+    K.cyl("MosinSniper_ScopeEye", "MosinSniper", (0.0, 0.31, 0.085), 0.02, 0.03, "Y", 12, "metal", 0)
+    K.box("MosinSniper_Mount", "MosinSniper", (0, 0.45, 0.06), (0.02, 0.1, 0.03), "metal", 0)
+
+    # Kar98k с прицелом ZF 39
+    weapon("Kar98Sniper", 1.12)
+    stock("Kar98Sniper", 0.0, 0.92, 0.12, 0.045)
+    K.cyl("Kar98Sniper_Barrel", "Kar98Sniper", (0, 0.8, 0.025), 0.012, 0.64, "Y", 10, "metal", 0)
+    K.cyl("Kar98Sniper_Receiver", "Kar98Sniper", (0, 0.42, 0.03), 0.018, 0.2, "Y", 10, "metal", 0.002)
+    tube("Kar98Sniper", "Kar98Sniper_Bolt", (0.0, 0.36, 0.02), (0.06, 0.36, -0.03), 0.006, "metal", 6)
+    K.cyl("Kar98Sniper_Scope", "Kar98Sniper", (0.0, 0.42, 0.09), 0.018, 0.3, "Y", 12, "metal", 0.002)
+    K.cyl("Kar98Sniper_Objective", "Kar98Sniper", (0.0, 0.58, 0.09), 0.025, 0.05, "Y", 12, "metal", 0)
+    K.box("Kar98Sniper_Mount", "Kar98Sniper", (0, 0.42, 0.06), (0.02, 0.14, 0.03), "metal", 0)
+
+    # 82-мм миномёт: ствол, двунога, опорная плита. Начало — у опорной плиты, ствол вперёд
+    weapon("Mortar", 1.22, 0.0)
+    K.cyl("Mortar_Tube", "Mortar", (0, 0.6, 0.0), 0.045, 1.2, "Y", 16, "paint", 0.004)
+    K.cyl("Mortar_Muzzle", "Mortar", (0, 1.19, 0.0), 0.052, 0.04, "Y", 16, "paint", 0)
+    K.box("Mortar_Plate", "Mortar", (0, 0.0, 0.0), (0.42, 0.05, 0.42), "paint", 0.008)
+    for s_ in (-1, 1):
+        tube("Mortar", "Mortar_Leg%d" % s_, (0, 0.78, 0.0), (s_ * 0.3, 0.55, -0.62), 0.012, "metal", 6)
+    K.box("Mortar_Sight", "Mortar", (0.07, 0.72, 0.03), (0.05, 0.06, 0.06), "metal", 0.003)
+
+    # Огнемёт РОКС-3: брандспойт (как винтовка) и ранцевый бак
+    weapon("Roks3", 0.95)
+    stock("Roks3", 0.0, 0.42, 0.11, 0.045, 0.04)
+    K.cyl("Roks3_Lance", "Roks3", (0, 0.66, 0.025), 0.022, 0.6, "Y", 12, "metal", 0.003)
+    K.cyl("Roks3_Nozzle", "Roks3", (0, 0.95, 0.025), 0.03, 0.06, "Y", 12, "metal", 0.003)
+    K.part("Roks3_Pack", None, (0, 0, 0))
+    K.box("Roks3_Tank", "Roks3_Pack", (0, 0, 0), (0.36, 0.16, 0.5), "paint", 0.03)
+    K.cyl("Roks3_Gas", "Roks3_Pack", (0.13, -0.11, 0.0), 0.04, 0.42, "Z", 12, "metal", 0.004)
+
+    # Flammenwerfer 41: брандспойт и два баллона (огнесмесь и азот)
+    weapon("Fmw41", 1.0)
+    K.cyl("Fmw41_Lance", "Fmw41", (0, 0.55, 0.02), 0.024, 0.9, "Y", 12, "metal", 0.003)
+    K.box("Fmw41_Grip1", "Fmw41", (0, 0.25, -0.06), (0.03, 0.05, 0.1), "wood", 0.004)
+    K.box("Fmw41_Grip2", "Fmw41", (0, 0.6, -0.06), (0.03, 0.05, 0.1), "wood", 0.004)
+    K.cyl("Fmw41_Igniter", "Fmw41", (0, 0.97, 0.03), 0.034, 0.08, "Y", 12, "metal", 0.003)
+    K.part("Fmw41_Pack", None, (0, 0, 0))
+    K.cyl("Fmw41_Fuel", "Fmw41_Pack", (-0.08, 0, 0), 0.09, 0.5, "Z", 16, "paint", 0.008)
+    K.cyl("Fmw41_Nitrogen", "Fmw41_Pack", (0.1, 0, -0.03), 0.055, 0.42, "Z", 14, "paint", 0.006)
+
     K.export(os.path.join(OUT, "Weapons.bytes"))
     if BLEND:
         K.save_blend(os.path.join(BLEND, "weapons.blend"))

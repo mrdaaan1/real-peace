@@ -11,11 +11,12 @@ namespace RealPeace
     /// </summary>
     public static class CoverMap
     {
-        const int N = (int)MapLayout.Size;
+        static int N;
         static byte[] cells;
 
         public static void Build()
         {
+            N = Mathf.RoundToInt(MapLayout.Size);
             cells = new byte[N * N];
             // Лес: лёгкое укрытие внутри
             foreach (var f in MapLayout.Forests)
@@ -25,6 +26,12 @@ namespace RealPeace
             {
                 var k = b.kind == BarrierKind.StoneWall || b.kind == BarrierKind.Sandbags ? Cover.Heavy : Cover.Light;
                 MarkSegment(b.a, b.b, 1.8f, k);
+            }
+            // Мелочи: надгробия и ежи — лёгкое укрытие, подбитая техника — тяжёлое
+            foreach (var p in MapLayout.Props)
+            {
+                if (p.kind == PropKind.Tombstone || p.kind == PropKind.TankTrap) MarkCircle(p.xz, 1.3f, Cover.Light);
+                else if (p.kind == PropKind.Wreck) MarkCircle(p.xz, 3.8f, Cover.Heavy);
             }
             // Стены домов: тяжёлое укрытие по периметру
             foreach (var b in MapLayout.Buildings)

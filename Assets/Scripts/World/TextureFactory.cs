@@ -183,6 +183,23 @@ namespace RealPeace
             return new Color(g, g * 0.98f, g * 0.93f, h);
         });
 
+        /// <summary>Кирпичная кладка «в перевязку»: 2 м по высоте — 26 рядов, у каждого кирпича свой оттенок, шов утоплен.</summary>
+        public static Texture2D Brick => Make("Brick", 512, (u, v) =>
+        {
+            float rows = v * 26f;
+            int row = Mathf.FloorToInt(rows);
+            float kv = rows - row;
+            float cols = u * 8f + (row % 2) * 0.5f;
+            int col = Mathf.FloorToInt(cols);
+            float ku = cols - col;
+            bool joint = kv < 0.14f || ku < 0.035f;
+            float shade = 0.8f + Hash((col % 8 + 8) % 8, row % 26, 151) * 0.4f;
+            float grain = Fbm(u, v, 16, 3, 153);
+            float soot = Mathf.Clamp01(Fbm(u, v, 3, 3, 155) - 0.55f) * 1.5f;
+            float g = joint ? 0.62f : (0.48f * shade + (grain - 0.5f) * 0.12f) * (1f - soot * 0.4f);
+            return new Color(g, joint ? g : g * 0.97f, joint ? g * 0.96f : g * 0.94f, joint ? 0.15f : 0.7f + grain * 0.2f);
+        });
+
         /// <summary>Бетон: поры, следы опалубки, пятна.</summary>
         public static Texture2D Concrete => Make("Concrete", 512, (u, v) =>
         {

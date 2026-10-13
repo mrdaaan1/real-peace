@@ -19,6 +19,7 @@ Shader "RealPeace/Terrain"
         _Tiling ("Повторов на метр", Float) = 0.25
         _MapSize ("Размер карты, м", Float) = 400
         _NormalStrength ("Сила нормали", Range(0, 2)) = 1
+        _GrassTint ("Оттенок травы", Color) = (1,1,1,1)
     }
 
     SubShader
@@ -41,6 +42,7 @@ Shader "RealPeace/Terrain"
             float _Tiling;
             float _MapSize;
             half _NormalStrength;
+            half4 _GrassTint;
         CBUFFER_END
 
         struct Attributes
@@ -103,6 +105,7 @@ Shader "RealPeace/Terrain"
             ctrl.r = max(ctrl.r, slope);
 
             half4 g = Layer(TEXTURE2D_ARGS(_GrassTex, sampler_GrassTex), uv, uvFar, farK);
+            g.rgb *= _GrassTint.rgb;
             half4 d = Layer(TEXTURE2D_ARGS(_DirtTex, sampler_GrassTex), uv, uvFar, farK);
             half4 w = Layer(TEXTURE2D_ARGS(_WheatTex, sampler_GrassTex), uv * 1.3, uvFar, farK);
             half4 m = Layer(TEXTURE2D_ARGS(_MudTex, sampler_GrassTex), uv, uvFar, farK);

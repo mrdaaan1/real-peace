@@ -233,7 +233,7 @@ namespace RealPeace
         }
 
         /// <summary>Ближайший замеченный враг в радиусе, по которому есть линия видимости (с фильтром).</summary>
-        protected Unit FindEnemy(Vector3 from, float range, System.Func<Unit, bool> filter)
+        protected Unit FindEnemy(Vector3 from, float range, System.Func<Unit, bool> filter, bool needLineOfSight = true)
         {
             if (Battle.I == null) return null;
             Unit best = null;
@@ -244,7 +244,7 @@ namespace RealPeace
                 if (filter != null && !filter(u)) continue;
                 float d = Vector3.Distance(from, u.Position);
                 if (d >= bestD) continue;
-                if (!Combat.LineOfSight(from, u.Position)) continue;
+                if (needLineOfSight && !Combat.LineOfSight(from, u.Position)) continue;
                 best = u;
                 bestD = d;
             }

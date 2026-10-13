@@ -24,6 +24,7 @@ namespace RealPeace
         int cachedFrame = -1;
         float maxRange;
         bool hasAt;
+        bool indirect;
 
         public static Squad Create(Faction side, UnitKind kind, Vector3 position, Transform parent)
         {
@@ -37,6 +38,7 @@ namespace RealPeace
             {
                 sq.maxRange = Mathf.Max(sq.maxRange, w.Range);
                 if (w.VsVehicles) sq.hasAt = true;
+                if (w.Indirect) sq.indirect = true;
             }
             if (def.HasAtGrenades) sq.hasAt = true;
             var facing = Vector3.forward * -Factions.NorthSign(side);
@@ -100,6 +102,7 @@ namespace RealPeace
                 if (Pinned) return "Прижат к земле";
                 if (Suppressed) return "Подавлен";
                 if (Def.Kind == UnitKind.MachineGun && InCombat && !Moving && !Soldiers[0].SetUp) return "Разворачивает пулемёт";
+                if (Def.Kind == UnitKind.Mortar && InCombat && !Moving && Soldiers.Count > 0 && !Soldiers[0].SetUp) return "Разворачивает миномёт";
                 if (InCombat) return "Ведёт бой";
                 if (Moving) return AttackMove ? "Наступает" : "Движется";
                 int inCover = 0;
@@ -123,6 +126,8 @@ namespace RealPeace
                 float c = base.Concealment;
                 if (!Moving && CoverMap.At(Position) == Cover.Heavy) c *= 0.8f;
                 if (Pinned) c *= 0.8f;
+                // Снайпер в маскхалате: неподвижного почти не видно
+                if (Def.Kind == UnitKind.Sniper) c *= Moving ? 0.75f : 0.4f;
                 return c;
             }
         }
@@ -207,7 +212,8 @@ namespace RealPeace
             {
                 targetTimer = Random.Range(0.4f, 0.6f);
                 var pos = Position;
-                InfantryTarget = FindEnemy(pos, maxRange + 2f, u => !u.IsVehicle);
+                // Миномёт видит «глазами» своих: цель должна быть замечена, линия видимости не нужна
+                InfantryTarget = FindEnemy(pos, maxRange + 2f, u => !u.IsVehicle, !indirect);
                 VehicleTarget = hasAt ? FindEnemy(pos, maxRange + 2f, u => u.IsVehicle) : null;
             }
 

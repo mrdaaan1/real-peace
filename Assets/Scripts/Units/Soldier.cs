@@ -154,7 +154,8 @@ namespace RealPeace
             // Поза: прижат — лежит; пулемётчик развёрнут — лежит за пулемётом; в укрытии или подавлен — пригнулся
             var pose = SoldierPose.Stand;
             bool stationary = speed < 0.4f;
-            if (Squad.Pinned || (Weapon.SetupTime > 0f && SetUp && stationary)) pose = SoldierPose.Prone;
+            if (Squad.Pinned || (Weapon.SetupTime > 0f && !Weapon.Indirect && SetUp && stationary)) pose = SoldierPose.Prone;
+            else if (Weapon.Indirect && SetUp && stationary && aimTimer > 0f) pose = SoldierPose.Crouch;
             else if (stationary && (Squad.Suppressed || CoverMap.At(Position) != Cover.None || aimTimer > 0f && Squad.InCombat)) pose = SoldierPose.Crouch;
             else if (Squad.Suppressed && speed > 0.1f) pose = SoldierPose.Crouch;
             Rig.Animate(speed, dt, pose, aimTimer > 0f);
@@ -163,15 +164,15 @@ namespace RealPeace
         void TryFire(Unit target, float dt)
         {
             float dist = Vector3.Distance(Position, target.Position);
-            if (dist > Weapon.Range) { burstLeft = 0; return; }
+            if (dist > Weapon.Range || dist < Weapon.MinRange) { burstLeft = 0; return; }
 
-            // Линию видимости проверяем не каждый кадр
+            // Линию видимости проверяем не каждый кадр (миномёту она не нужна — цель видят свои)
             losTimer -= dt;
             if (losTimer <= 0f || losFor != target)
             {
                 losTimer = Random.Range(0.4f, 0.7f);
                 losFor = target;
-                losOk = Combat.LineOfSight(Position, target.Position);
+                losOk = Weapon.Indirect || Combat.LineOfSight(Position, target.Position);
             }
             if (!losOk) return;
             aimTimer = 1.2f;
@@ -202,8 +203,10 @@ namespace RealPeace
         void FireShot(Unit target)
         {
             var muzzle = Rig.muzzle.position;
-            Squad.RevealTimer = 4f;
+            Squad.RevealTimer = Weapon.Indirect ? 1.5f : 4f;
             Combat.Shots[(int)Squad.Side]++;
+            if (Weapon.Indirect) { FireMortar(target, muzzle); return; }
+            if (Weapon.Flame) { FireFlame(target, muzzle); return; }
             Effects.MuzzleFlash(muzzle, Weapon.Sound == ShotSound.MachineGun ? 0.35f : 0.25f);
             Sfx.Play(Weapon.Clip, muzzle, Weapon.Sound == ShotSound.Rifle ? 0.55f : 0.45f, Random.Range(0.92f, 1.08f));
 
@@ -243,6 +246,44 @@ namespace RealPeace
                     OnAtHit(tank, from, hit, end);
                 }
             }
+        }
+
+        /// <summary>Миномёт: мина летит по высокой дуге и падает с рассеиванием, тем большим, чем дальше цель.</summary>
+        void FireMortar(Unit target, Vector3 muzzle)
+        {
+            Effects.MuzzleFlash(muzzle, 0.5f);
+            Sfx.Play(Weapon.Clip, muzzle, 0.7f, Random.Range(0.9f, 1.05f));
+            float mult = Squad.Side == Battle.I.PlayerSide ? 1f : GameSettings.I.AiAccuracyMultiplier;
+            var aim = target is Squad sq && sq.RandomSoldier() is Soldier v ? v.Position : target.Position;
+            float d = Vector3.Distance(Position, aim);
+            bool close = Random.value < Combat.HitChance(Weapon, d, false, Cover.None, false, Squad.Suppression, mult);
+            float scatter = close ? Random.Range(0f, 2f) : Random.Range(3f, 4f + d * 0.08f);
+            float a = Random.value * Mathf.PI * 2f;
+            var landing = MapLayout.Ground(aim + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * scatter);
+            var w = Weapon;
+            var side = Squad.Side;
+            var shooter = Squad;
+            Projectile.Launch(muzzle, landing, 1.6f + d / 70f, 10f + d * 0.3f, false, () => Combat.Explode(landing, w, side, shooter));
+        }
+
+        /// <summary>Огнемёт: струя огня по точке у цели, жжёт всех бойцов рядом — укрытия не спасают.</summary>
+        void FireFlame(Unit target, Vector3 muzzle)
+        {
+            if (burstLeft == Weapon.Burst - 1 || burstLeft == 3) Sfx.Play(Weapon.Clip, muzzle, 0.7f, Random.Range(0.9f, 1.1f));
+            var victimPos = target is Squad sq && sq.RandomSoldier() is Soldier v ? v.Position : target.Position;
+            var to = victimPos + Vector3.up * 0.6f + Random.insideUnitSphere * 0.6f;
+            Effects.Flame(muzzle, to);
+            if (target is Squad enemy)
+            {
+                foreach (var s in enemy.Soldiers.ToArray())
+                    if (s.Alive && Vector3.Distance(s.Position, victimPos) < 3f)
+                    {
+                        s.TakeDamage(Weapon.Damage * Random.Range(0.7f, 1.1f), Squad);
+                        Combat.Hits[(int)Squad.Side]++;
+                    }
+                enemy.Suppress(Weapon.Suppression);
+            }
+            else if (target is Tank t) t.TakeDamage(Weapon.Damage * 0.15f, Squad);
         }
 
         void OnAtHit(Tank tank, Vector3 from, bool hit, Vector3 at)

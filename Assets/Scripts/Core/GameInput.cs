@@ -44,9 +44,10 @@ namespace RealPeace
         public static bool SelectAllPressed => Ctrl && Down(KeyCode.A);
         public static bool FocusPressed => Down(KeyCode.Home) || Down(KeyCode.H);
 
-        /// <summary>Вызов подкреплений: F5–F8 (буквы заняты камерой и приказами).</summary>
+        /// <summary>Вызов подкреплений: F5–F11 (буквы заняты камерой и приказами).</summary>
         public static int BuyPressed =>
-            Down(KeyCode.F5) ? 1 : Down(KeyCode.F6) ? 2 : Down(KeyCode.F7) ? 3 : Down(KeyCode.F8) ? 4 : 0;
+            Down(KeyCode.F5) ? 1 : Down(KeyCode.F6) ? 2 : Down(KeyCode.F7) ? 3 : Down(KeyCode.F8) ? 4 :
+            Down(KeyCode.F9) ? 5 : Down(KeyCode.F10) ? 6 : Down(KeyCode.F11) ? 7 : 0;
 
         /// <summary>Группы: Ctrl+1…9 — запомнить, 1…9 — выбрать. Возвращает номер или 0.</summary>
         public static int GroupPressed

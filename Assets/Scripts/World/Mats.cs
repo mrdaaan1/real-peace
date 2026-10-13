@@ -18,6 +18,7 @@ namespace RealPeace
         Bark,
         Soil,
         Wood,       // приклады, ящики
+        Brick,      // кирпичная кладка
     }
 
     /// <summary>
@@ -76,6 +77,7 @@ namespace RealPeace
                 case Surf.Bark: detail = TextureFactory.Bark; scale = 1.5f; strength = 1.1f; normal = 2.5f; smooth = 0.1f; break;
                 case Surf.Soil: detail = TextureFactory.Soil; scale = 0.6f; strength = 1.1f; normal = 2f; smooth = 0.1f; break;
                 case Surf.Wood: detail = TextureFactory.Planks; scale = 2.5f; strength = 0.8f; normal = 0.8f; smooth = 0.3f; break;
+                case Surf.Brick: detail = TextureFactory.Brick; scale = 0.5f; strength = 1f; normal = 2f; smooth = 0.12f; break;
             }
             m.SetTexture("_DetailTex", detail);
             m.SetTexture("_DetailNormal", TextureFactory.NormalFromHeight(detail, NormalStrengthFor(kind)));
@@ -114,7 +116,7 @@ namespace RealPeace
             return m;
         }
 
-        static float NormalStrengthFor(Surf kind) => kind == Surf.Logs || kind == Surf.Stone || kind == Surf.Thatch || kind == Surf.Bark ? 6f : 3.5f;
+        static float NormalStrengthFor(Surf kind) => kind == Surf.Logs || kind == Surf.Brick || kind == Surf.Stone || kind == Surf.Thatch || kind == Surf.Bark ? 6f : 3.5f;
 
         /// <summary>Светящийся материал (трассеры, кольца, маркеры). intensity > 1 — светится через bloom.</summary>
         public static Material Glow(Color color, float intensity = 1f, bool onTop = false)
